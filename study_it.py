@@ -54,6 +54,15 @@ parser.add_argument(
     type=int
 )
 
+parser.add_argument(
+    '-v',
+    '--verses-only',
+    help="Only stop to ask for input when the program encounters a verse from the input file. All other lines will just be printed.",
+    required=False,
+    default=False,
+    action='store_true'
+)
+
 args = parser.parse_args()
 
 # CONSTANT VARIABLES:
@@ -69,7 +78,9 @@ EXCLUDED_WORDS = ["in", "as",
                   "it", "to",
                   "he", "what",
                   "be", "i",
-                  "your"]
+                  "your", "do",
+                  "not", "that",
+                  "by"]
 
 # How many words, minimum, should we try to omit per sentence?
 DIFFICULTY = args.level
@@ -84,7 +95,10 @@ missed_sentences = []
 # Read the file line by line
 with open(args.file, "r") as f:
     for line in f:
-        # Omit random words of the line if they are not in the excluded list
+        # If it's a blank line, print a newline and move on.
+        if re.match(r'^\s*$', line):
+            print ""
+            continue
 
         # Variables
         words_omitted = 0
@@ -97,7 +111,10 @@ with open(args.file, "r") as f:
         # If the line is a verse, omit the last and penultimate index
         # This should remove the verse reference completely. This way,
         # the user has to supply the entire reference everytime
-        verse_reference_mt = re.search(r"[0-9]* [A-Za-z]+ [0-9]+:[0-9]+", line)
+        if args.debug:
+            print "DEBUG - Trying to match the line:"
+            print line
+        verse_reference_mt = re.search(r"\(*[0-9]* *[A-Za-z]+ [0-9]+:[0-9]+\)*", line)
         count = 0
         if re.match(r"[0-9]+:[0-9]+", sentence_list[-1]):
             count = -1
@@ -130,16 +147,15 @@ with open(args.file, "r") as f:
             #print "Word: {}".format(sentence_list[rand_index])
             if sentence_list[rand_index].lower() in EXCLUDED_WORDS or rand_index in replace_indicies:
                 continue
-            elif re.match(r"[0-9a-zA-Z\.]+", sentence_list[rand_index]):
-                #print "DOes the word {} match?".format(sentence_list[rand_index])
-                #print "It matches!"
+            elif re.match(r"[0-9a-zA-Z\.]{2,}", sentence_list[rand_index]):
                 words_omitted += 1
                 replace_indicies.append(rand_index)
 
         # Replace omitted words with underscores
         for index in replace_indicies:
             omitted_words.append(sentence_list[index])
-            sentence_list[index] = "_"*len(sentence_list[index])
+            #sentence_list[index] = "_"*len(sentence_list[index])
+            sentence_list[index] = re.sub(r'[\:\-0-9A-Za-z]+', '_'*len(sentence_list[index]), sentence_list[index])
         # Print the line, with random words omitted
         print " ".join(sentence_list)
 
@@ -148,28 +164,54 @@ with open(args.file, "r") as f:
         # verse and reference
         if re.search(r"[A-Za-z]+ [0-9]+:[0-9]+", line) and not args.generate:
             print "This line is a verse, let's study it a little more..."
-            _ = raw_input("Type the verse out:\n")
+            _ = ""
             while _.lower().rstrip() != line.lower().rstrip():
-                print "Not quite, try again.."
-                print "The verse reference is {}. Look it up if you need to.".format(
-                       verse_reference)
                 _ = raw_input("Type the verse out:\n")
-            # If it's a verse, and we have broken out of the while loop
-            # above, then we can go to the next line
+                if _ == 'skip':
+                    break
+                if _ == 'print':
+                    print line
+                    continue
+                if _.lower().rstrip() == line.lower().rstrip():
+                    # If it's a verse, and we have broken out of the while loop
+                    # above, then we are going to ask for the whole verse this time.
+                    print "\n"*100
+                    print "Nice! Now type the entire verse out from memory:"
+                else:
+                    print "Not quite, try again.."
+                    print "The verse reference is {}. Look it up if you need to.".format(
+                           verse_reference)
+
+            # Reset '_'
+            _ = ""
+            while _.lower().rstrip() != line.lower().rstrip():
+                _ = raw_input("The verse is {}. (Type 'skip' to skip this step)\n".format(verse_reference))
+                if _ == 'skip':
+                    break
+                if _ == 'print':
+                    print line
+                    continue
+                if _.lower().rstrip() == line.lower().rstrip():
+                    print "Nice!"
+                    break
+                else:
+                    print "Incorrect, try again. Look it up if you need to"
+                    if args.debug:
+                        print "DEBUG - THe verse is: {}".format(line)
             continue
 
         # Ask for user input
-        if not args.generate:
+        if not args.generate and not args.verses_only:
             sentence = raw_input("Type the full sentence:\n")
         # Check the input
         if sentence.lower().rstrip() == line.lower().rstrip() and not args.generate:
             print "Nice!"
-        elif not args.generate:
+        elif not args.generate and not args.verses_only:
             print "Not quite :(. The line is:"
             print line
             missed += 1
             missed_sentences.append(line)
-        if not args.generate:
+        if not args.generate and not args.verses_only:
             total += 1
             print "Score so far: {}/{}".format(total - missed, total)
             print "-"*25
