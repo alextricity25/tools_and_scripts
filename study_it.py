@@ -7,13 +7,13 @@
 # entire file at once. This is useful to create "fill-in-the-blank" type
 # quizzes.
 
-# TODO: Use orded lists
 # EXCLUDED WORDS don't work
 
 import argparse
 import random
 import re
 import sys
+import time
 
 # The parser object for the scripts arguments
 parser = argparse.ArgumentParser(
@@ -63,6 +63,15 @@ parser.add_argument(
     action='store_true'
 )
 
+parser.add_argument(
+    '-r',
+    '--references-only',
+    help="Only require the verse references to be typed out by the user, not the entire verse.",
+    required=False,
+    default=False,
+    action='store_true'
+)
+
 args = parser.parse_args()
 
 # CONSTANT VARIABLES:
@@ -95,6 +104,7 @@ missed_sentences = []
 # Read the file line by line
 with open(args.file, "r") as f:
     for line in f:
+        time.sleep(1)
         # If it's a blank line, print a newline and move on.
         if re.match(r'^\s*$', line):
             print ""
@@ -116,7 +126,9 @@ with open(args.file, "r") as f:
             print line
         verse_reference_mt = re.search(r"\(*[0-9]* *[A-Za-z]+ [0-9]+:[0-9]+\)*", line)
         count = 0
-        if re.match(r"[0-9]+:[0-9]+", sentence_list[-1]):
+        #if re.match(r"[0-9]+:[0-9]+", sentence_list[-1]):
+        if verse_reference_mt:
+            # This assumes the verse reference is at the end of the line
             count = -1
             verse_reference = verse_reference_mt.group(0)
             while abs(count) <= len(verse_reference.split()):
@@ -130,7 +142,8 @@ with open(args.file, "r") as f:
                 words += 1
 
         # We also have to consider any words that have already been
-        # omitted. WE don't want to include this in the word count
+        # omitted i.e verse references. We don't want to include this in the
+        # word count
         words = words - abs(count)
 
         # Omit random words in the line
@@ -162,21 +175,25 @@ with open(args.file, "r") as f:
         # If the line is a verse, let's study it a little more...
         # The program will not continue until the user inputs the right
         # verse and reference
-        if re.search(r"[A-Za-z]+ [0-9]+:[0-9]+", line) and not args.generate:
-            print "This line is a verse, let's study it a little more..."
+        if verse_reference_mt and not args.generate:
             _ = ""
             while _.lower().rstrip() != line.lower().rstrip():
-                _ = raw_input("Type the verse out:\n")
+                _ = raw_input("Type the {} out:\n".format(
+                    "reference" if args.references_only else "verse")
+                    )
                 if _ == 'skip':
                     break
                 if _ == 'print':
                     print line
                     continue
+                if args.references_only and re.search(_, verse_reference):
+                    print "Amen!"
+                    break
                 if _.lower().rstrip() == line.lower().rstrip():
                     # If it's a verse, and we have broken out of the while loop
                     # above, then we are going to ask for the whole verse this time.
                     print "\n"*100
-                    print "Nice! Now type the entire verse out from memory:"
+                    print "Amen! Now type the entire verse out from memory:"
                 else:
                     print "Not quite, try again.."
                     print "The verse reference is {}. Look it up if you need to.".format(
@@ -184,7 +201,7 @@ with open(args.file, "r") as f:
 
             # Reset '_'
             _ = ""
-            while _.lower().rstrip() != line.lower().rstrip():
+            while _.lower().rstrip() != line.lower().rstrip() and not args.references_only:
                 _ = raw_input("The verse is {}. (Type 'skip' to skip this step)\n".format(verse_reference))
                 if _ == 'skip':
                     break
@@ -192,7 +209,7 @@ with open(args.file, "r") as f:
                     print line
                     continue
                 if _.lower().rstrip() == line.lower().rstrip():
-                    print "Nice!"
+                    print "Amen!"
                     break
                 else:
                     print "Incorrect, try again. Look it up if you need to"
@@ -205,7 +222,7 @@ with open(args.file, "r") as f:
             sentence = raw_input("Type the full sentence:\n")
         # Check the input
         if sentence.lower().rstrip() == line.lower().rstrip() and not args.generate:
-            print "Nice!"
+            print "Amen!"
         elif not args.generate and not args.verses_only:
             print "Not quite :(. The line is:"
             print line
