@@ -124,7 +124,7 @@ with open(args.file, "r") as f:
         if args.debug:
             print "DEBUG - Trying to match the line:"
             print line
-        verse_reference_mt = re.search(r"\(*[0-9]* *[A-Za-z]+ [0-9]+:[0-9]+\)*", line)
+        verse_reference_mt = re.search(r"\(*[0-9]* *[A-Za-z]+ [0-9]+:[0-9]+-*[0-9]*\)*", line)
         count = 0
         #if re.match(r"[0-9]+:[0-9]+", sentence_list[-1]):
         if verse_reference_mt:
