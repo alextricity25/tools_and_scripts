@@ -72,6 +72,15 @@ parser.add_argument(
     action='store_true'
 )
 
+parser.add_argument(
+    '-q',
+    '--print-questions',
+    help='When specified, the program will print lines that begin with Q#: and not replace any words',
+    default=False,
+    required=False,
+    action='store_true'
+)
+
 args = parser.parse_args()
 
 # CONSTANT VARIABLES:
@@ -104,7 +113,8 @@ missed_sentences = []
 # Read the file line by line
 with open(args.file, "r") as f:
     for line in f:
-        time.sleep(1)
+        if not args.generate:
+            time.sleep(1)
         # If it's a blank line, print a newline and move on.
         if re.match(r'^\s*$', line):
             print ""
@@ -124,7 +134,7 @@ with open(args.file, "r") as f:
         if args.debug:
             print "DEBUG - Trying to match the line:"
             print line
-        verse_reference_mt = re.search(r"\(*[0-9]* *[A-Za-z]+ [0-9]+:[0-9]+-*[0-9]*\)*", line)
+        verse_reference_mt = re.search(r"\(*[0-9]* *[A-Za-z\.]+ [0-9]+:[0-9]+-*[0-9]*\)*", line)
         count = 0
         #if re.match(r"[0-9]+:[0-9]+", sentence_list[-1]):
         if verse_reference_mt:
@@ -139,13 +149,22 @@ with open(args.file, "r") as f:
         words = 0
         for word in sentence_list:
             if word.lower().rstrip() not in EXCLUDED_WORDS and re.match(r"[0-9a-zA-Z\.]+", word):
+                if args.debug:
+                    print "DEBUG - Adding word {} to word count!".format(word)
                 words += 1
+                if args.debug:
+                    print "DEBUG - word count is now: {}".format(words)
 
         # We also have to consider any words that have already been
         # omitted i.e verse references. We don't want to include this in the
         # word count
         words = words - abs(count)
 
+        # If the -q options is specified, the program will simply print any lines
+        # that begin with 'Q#:'
+        if re.search(r'Q[0-9]:', line) and args.print_questions:
+            print line
+            continue
         # Omit random words in the line
         while words_omitted != min(words, DIFFICULTY):
             if args.debug:
