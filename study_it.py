@@ -98,7 +98,8 @@ EXCLUDED_WORDS = ["in", "as",
                   "be", "i",
                   "your", "do",
                   "not", "that",
-                  "by"]
+                  "by", "about",
+                  "word", "being"]
 
 # How many words, minimum, should we try to omit per sentence?
 DIFFICULTY = args.level
