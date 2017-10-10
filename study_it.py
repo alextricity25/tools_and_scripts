@@ -14,6 +14,19 @@ import random
 import re
 import sys
 import time
+import string
+
+
+def cal_len(word):
+    """
+    Count the number of alphanumeric characters in a word
+    """
+    count = 0
+    good_chars = string.ascii_letters + "0123456789" + "'"
+    for letter in word:
+        if letter in good_chars:
+            count += 1
+    return count
 
 # The parser object for the scripts arguments
 parser = argparse.ArgumentParser(
@@ -81,6 +94,32 @@ parser.add_argument(
     action='store_true'
 )
 
+parser.add_argument(
+    '-s',
+    '--skip-verse-study',
+    default=False,
+    required=False,
+    action='store_true'
+)
+
+parser.add_argument(
+    '-p',
+    '--print-references',
+    help="Always print verse references",
+    default=False,
+    required=False,
+    action='store_true'
+)
+
+parser.add_argument(
+    '-o',
+    '--outline-mode',
+    help="Do not omit verses after a dash",
+    default=False,
+    required=False,
+    action='store_true'
+)
+
 args = parser.parse_args()
 
 # CONSTANT VARIABLES:
@@ -99,7 +138,10 @@ EXCLUDED_WORDS = ["in", "as",
                   "your", "do",
                   "not", "that",
                   "by", "about",
-                  "word", "being"]
+                  "word", "being",
+                  "if", "who",
+                  "are", "for",
+                  "were", "we"]
 
 # How many words, minimum, should we try to omit per sentence?
 DIFFICULTY = args.level
@@ -114,6 +156,13 @@ missed_sentences = []
 # Read the file line by line
 with open(args.file, "r") as f:
     for line in f:
+        # Preserve indentation
+        whitespace_mt = re.search(r'^[ \t]+', line)
+        if whitespace_mt:
+            leading_whitespace = whitespace_mt.group(0)
+        else:
+            leading_whitespace = ''
+
         if not args.generate:
             time.sleep(1)
         # If it's a blank line, print a newline and move on.
@@ -126,6 +175,7 @@ with open(args.file, "r") as f:
         replace_indicies = []
         sentence_list = line.split()
         omitted_words = []
+        verse_reference_indicies = []
         sentence = ""
         
         # For Bible verse studying.
@@ -143,13 +193,16 @@ with open(args.file, "r") as f:
             count = -1
             verse_reference = verse_reference_mt.group(0)
             while abs(count) <= len(verse_reference.split()):
-                replace_indicies.append(count)
-                count = count -1
+                if not args.print_references and not args.outline_mode:
+                    replace_indicies.append(count)
+                else:
+                    verse_reference_indicies.append(count)
+                count = count - 1
 
         # Count the number of words in a line without the EXCLUDED_WORDS
         words = 0
         for word in sentence_list:
-            if word.lower().rstrip() not in EXCLUDED_WORDS and re.match(r"[0-9a-zA-Z\.]+", word):
+            if word.lower().strip() not in EXCLUDED_WORDS and re.match(r"[0-9a-zA-Z\.]+", word):
                 if args.debug:
                     print "DEBUG - Adding word {} to word count!".format(word)
                 words += 1
@@ -159,7 +212,22 @@ with open(args.file, "r") as f:
         # We also have to consider any words that have already been
         # omitted i.e verse references. We don't want to include this in the
         # word count
-        words = words - abs(count)
+        if not args.print_references and not args.outline_mode:
+            words = words - abs(count)
+
+        # Outline mode will not consider all words after
+        # the '-', which are typically verses.
+        if args.outline_mode:
+            try:
+                verses_count = len(sentence_list[sentence_list.index('-'):])
+                if args.debug:
+                    print "DEBUG -Subtracting verses_count from words"
+                    print "DEBUG - verses_count: {}".format(verses_count)
+                words = words - verses_count
+                if args.debug:
+                    print "DEBUG - Words after subtracting: {}".format(words)
+            except:
+                verses_count = 0
 
         # If the -q options is specified, the program will simply print any lines
         # that begin with 'Q#:'
@@ -175,9 +243,22 @@ with open(args.file, "r") as f:
                 print "DEBUG - min() {}".format(min(words, DIFFICULTY))
                 print "DEBUG - replace_indcies list: {}".format(replace_indicies)
                 print "DEBUG - line: {}".format(line)
-            rand_index = random.randint(0, len(sentence_list) - 1)
+            # This protects the verse reference from
+            # being omitted when the print-reference
+            # option is used
+            reference_count = count if args.print_references else 0
+            if args.outline_mode:
+                upper_l = len(sentence_list) - verses_count - 1
+                if args.debug:
+                    print "DEBUG - rand_index upper_l: {}".format(upper_l)
+                rand_index = random.randint(0, upper_l)
+            else:
+                rand_index = random.randint(0, len(sentence_list) - 1 - reference_count)
             # Check to see if word is EXCLUDED, and prevent any duplicates
             #print "Word: {}".format(sentence_list[rand_index])
+            if args.print_references:
+                if rand_index in verse_reference_indicies:
+                    continue
             if sentence_list[rand_index].lower() in EXCLUDED_WORDS or rand_index in replace_indicies:
                 continue
             elif re.match(r"[0-9a-zA-Z\.]{2,}", sentence_list[rand_index]):
@@ -188,16 +269,24 @@ with open(args.file, "r") as f:
         for index in replace_indicies:
             omitted_words.append(sentence_list[index])
             #sentence_list[index] = "_"*len(sentence_list[index])
-            sentence_list[index] = re.sub(r'[\:\-0-9A-Za-z]+', '_'*len(sentence_list[index]), sentence_list[index])
+            # Calculate the number of alphanums in the word
+            length = cal_len(sentence_list[index])
+            if re.match(r'^[A-Za-z0-9]+\.$', sentence_list[index]):
+                continue
+            sentence_list[index] = re.sub(r"[\-0-9A-Za-z\']+", '_' * length, sentence_list[index])
         # Print the line, with random words omitted
+        ## Print the leading whitespace only when args.generate is on
+        ## This way indentation will be preserved when generating quizes
+        if args.generate:
+            print leading_whitespace,
         print " ".join(sentence_list)
 
         # If the line is a verse, let's study it a little more...
         # The program will not continue until the user inputs the right
         # verse and reference
-        if verse_reference_mt and not args.generate:
+        if verse_reference_mt and not args.generate and not args.outline_mode:
             _ = ""
-            while _.lower().rstrip() != line.lower().rstrip():
+            while _.lower().strip() != line.lower().strip():
                 _ = raw_input("Type the {} out:\n".format(
                     "reference" if args.references_only else "verse")
                     )
@@ -209,26 +298,32 @@ with open(args.file, "r") as f:
                 if args.references_only and re.search(_, verse_reference):
                     print "Amen!"
                     break
-                if _.lower().rstrip() == line.lower().rstrip():
-                    # If it's a verse, and we have broken out of the while loop
-                    # above, then we are going to ask for the whole verse this time.
-                    print "\n"*100
-                    print "Amen! Now type the entire verse out from memory:"
+                elif _.lower().strip() == line.lower().strip():
+                    print "Amen!"
                 else:
                     print "Not quite, try again.."
                     print "The verse reference is {}. Look it up if you need to.".format(
                            verse_reference)
 
+            # Skip the additional verse study, which requires
+            # the verse to be typed out from memory
+            if args.skip_verse_study:
+                continue
+
             # Reset '_'
             _ = ""
-            while _.lower().rstrip() != line.lower().rstrip() and not args.references_only:
+            # If it's a verse, and we have broken out of the while loop
+            # above, then we are going to ask for the whole verse this time.
+            print "\n"*100
+            print "Amen! Now type the entire verse out from memory:"
+            while _.lower().strip() != line.lower().strip() and not args.references_only:
                 _ = raw_input("The verse is {}. (Type 'skip' to skip this step)\n".format(verse_reference))
                 if _ == 'skip':
                     break
                 if _ == 'print':
                     print line
                     continue
-                if _.lower().rstrip() == line.lower().rstrip():
+                if _.lower().strip() == line.lower().strip():
                     print "Amen!"
                     break
                 else:
@@ -241,7 +336,7 @@ with open(args.file, "r") as f:
         if not args.generate and not args.verses_only:
             sentence = raw_input("Type the full sentence:\n")
         # Check the input
-        if sentence.lower().rstrip() == line.lower().rstrip() and not args.generate:
+        if sentence.lower().strip() == line.lower().strip() and not args.generate:
             print "Amen!"
         elif not args.generate and not args.verses_only:
             print "Not quite :(. The line is:"
@@ -259,3 +354,4 @@ with open(args.file, "r") as f:
         print "You missed the following sentences:"
         for sentence in missed_sentences:
             print sentence
+
