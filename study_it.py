@@ -141,7 +141,18 @@ EXCLUDED_WORDS = ["in", "as",
                   "word", "being",
                   "if", "who",
                   "are", "for",
-                  "were", "we"]
+                  "were", "we",
+                  "should", "every",
+                  "one", "these",
+                  "which", "have",
+                  "been", "but",
+                  "has", "with",
+                  "our", "up",
+                  "its", "because",
+                  "on", "all",
+                  "implies", "indicates",
+                  "many", "go",
+                  "or"]
 
 # How many words, minimum, should we try to omit per sentence?
 DIFFICULTY = args.level
@@ -234,6 +245,8 @@ with open(args.file, "r") as f:
         if re.search(r'Q[0-9]:', line) and args.print_questions:
             print line
             continue
+
+
         # Omit random words in the line
         while words_omitted != min(words, DIFFICULTY):
             if args.debug:
@@ -259,12 +272,17 @@ with open(args.file, "r") as f:
             if args.print_references:
                 if rand_index in verse_reference_indicies:
                     continue
+
             if sentence_list[rand_index].lower() in EXCLUDED_WORDS or rand_index in replace_indicies:
                 continue
             elif re.match(r"[0-9a-zA-Z\.]{2,}", sentence_list[rand_index]):
                 words_omitted += 1
                 replace_indicies.append(rand_index)
 
+        # Sort the replace_indecies list.
+        # This list contains the indicies of the sentence_list structure
+        # to be replaced with underscores.
+        replace_indicies.sort()
         # Replace omitted words with underscores
         for index in replace_indicies:
             omitted_words.append(sentence_list[index])
