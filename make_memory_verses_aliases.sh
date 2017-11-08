@@ -16,6 +16,7 @@ pushd "$MEMORY_VERSE_DIR" > /dev/null
         # Filename without extension
         filename=$(echo $mv_file | cut -d'.' -f1)
         #echo "CURRENT MV_FILE=${mv_file}"
+        # If the alias is already in place, do not print it.
         if echo $current_aliases | grep $filename > /dev/null; then
             continue
         else
