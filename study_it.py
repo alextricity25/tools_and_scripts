@@ -152,7 +152,7 @@ EXCLUDED_WORDS = ["in", "as",
                   "on", "all",
                   "implies", "indicates",
                   "many", "go",
-                  "or"]
+                  "or", "it's"]
 
 # How many words, minimum, should we try to omit per sentence?
 DIFFICULTY = args.level
@@ -234,11 +234,18 @@ with open(args.file, "r") as f:
                 if args.debug:
                     print "DEBUG -Subtracting verses_count from words"
                     print "DEBUG - verses_count: {}".format(verses_count)
-                words = words - verses_count
+               # Subtract 1, otherwise the prepending point reference will be
+               # counted. ie. (I, a, ii)
+                words = words - verses_count - 1
                 if args.debug:
                     print "DEBUG - Words after subtracting: {}".format(words)
             except:
+                if args.debug:
+                    print "DEBUG - This line does not have any verse references"
                 verses_count = 0
+               # Subtract 1, otherwise the prepending point reference will be
+               # counted. ie. (I, a, ii)
+                words = words - 1
 
         # If the -q options is specified, the program will simply print any lines
         # that begin with 'Q#:'
@@ -248,7 +255,7 @@ with open(args.file, "r") as f:
 
 
         # Omit random words in the line
-        while words_omitted != min(words, DIFFICULTY):
+        while words_omitted < min(words, DIFFICULTY):
             if args.debug:
                 print "DEBUG - The number of words in this sentence is: {}".format(words)
                 print "DEBUG - THe minimum between {} and {} is {}".format(words, DIFFICULTY, min(words, DIFFICULTY))
