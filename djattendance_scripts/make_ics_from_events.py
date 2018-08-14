@@ -2,9 +2,9 @@ import sys
 import os
 import requests
 import json
-import datetime
-import pdb
+from datetime import datetime
 from ics import Calendar, Event
+
 ADDRESS = '127.0.0.1'
 URL = "http://{}:8000".format(ADDRESS)
 URL_LOGIN = "{}/accounts/login/".format(URL)
@@ -27,7 +27,6 @@ r = client.post(URL_LOGIN, data=login_data)
 # Get events
 res = client.get("{}/api/events".format(URL))
 
-pdb.set_trace()
 # Make Calendar
 c = Calendar()
 
@@ -35,9 +34,12 @@ c = Calendar()
 for event in res.json():
     e = Event()
     e.name = event['name']
-    e.begin = event['begin_datetime']
-    e.end = event['end_datetime']
-    c.events.append(e)
+    # Translate time format
+    start_datetime = datetime.strptime(event['start_datetime'][0:-6], '%Y-%m-%dT%H:%M:%S')
+    e.begin = start_datetime.strftime("%Y%m%d %H:%M:%S")
+    end_datetime = datetime.strptime(event['end_datetime'][0:-6], '%Y-%m-%dT%H:%M:%S')
+    e.end = end_datetime.strftime("%Y%m%d %H:%M:%S")
+    c.events.add(e)
 
-#events = json.load(res.json()[0])
-#print res.json()
+with open('training_schedule.ics', 'w') as f:
+    f.writelines(c)
