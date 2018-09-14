@@ -34,11 +34,8 @@ c = Calendar()
 for event in res.json():
     e = Event()
     e.name = event['name']
-    # Translate time format
-    start_datetime = datetime.strptime(event['start_datetime'][0:-6], '%Y-%m-%dT%H:%M:%S')
-    e.begin = start_datetime.strftime("%Y%m%d %H:%M:%S")
-    end_datetime = datetime.strptime(event['end_datetime'][0:-6], '%Y-%m-%dT%H:%M:%S')
-    e.end = end_datetime.strftime("%Y%m%d %H:%M:%S")
+    e.begin = event['start_datetime']
+    e.end = event['end_datetime']
     c.events.add(e)
 
 with open('training_schedule.ics', 'w') as f:
