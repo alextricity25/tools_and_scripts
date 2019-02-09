@@ -28,3 +28,8 @@ INT_VARIABLE=23
 some_function() {
     echo "Some function!"
 }
+
+# Conditionals
+if grep "string" /some/file; then
+    echo "Condition is true"
+fi
