@@ -17,10 +17,6 @@ SOME_VARIABLE='HELLO WORLD'
 INT_VARIABLE=23
 
 
-# MAIN -----------------------------------------------------------------------
-
-
-
 
 # FUNCTION: <name>
 # Description:
@@ -33,3 +29,12 @@ some_function() {
 if grep "string" /some/file; then
     echo "Condition is true"
 fi
+
+# Arithmatic
+# Can be done inside double parenthesis
+echo $(( 4 + 5))
+
+# MAIN -----------------------------------------------------------------------
+
+
+
